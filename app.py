@@ -7,6 +7,7 @@ from streamlit_drawable_canvas import st_canvas
 import google.generativeai as genai
 import os
 
+
 # Streamlit app layout
 st.set_page_config(page_title="Drawing Enhancer", page_icon="🎨", layout="wide")
 st.title("🎨 Drawing Enhancer")
@@ -23,52 +24,40 @@ SKETCH_TO_IMAGE_API_KEY = st.text_input("Enter your ClipDrop API Key:", "")
 
 # Configure Gemini API based on user input
 if GENAI_API_KEY:
-    try:
-        genai.configure(api_key=GENAI_API_KEY)
-        st.success("Gemini API configured successfully!")
-    except Exception as e:
-        st.error(f"Error configuring Gemini API: {e}")
+    genai.configure(api_key=GENAI_API_KEY)
 else:
     st.warning("Please enter your Gemini API key.")
 
 # Function to generate a prompt from the sketch using Gemini API
 def generate_prompt_from_sketch(file_path):
-    try:
-        if not GENAI_API_KEY:
-            return None  # Exit if no API key
-        uploaded_file = genai.upload_file(file_path)
-        if uploaded_file:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content([uploaded_file, "\n\n", "Describe the scene in this sketch."])
-            if response:
-                prompt = response.text
-                return prompt
-        return None
-    except Exception as e:
-        st.error(f"Error generating prompt: {e}")
-        return None
+    if not GENAI_API_KEY:
+        return None  # Exit if no API key
+    uploaded_file = genai.upload_file(file_path)
+    if uploaded_file:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content([uploaded_file, "\n\n", "Describe the scene in this sketch."])
+        if response:
+            prompt = response.text
+            return prompt
+    return None
 
 # Function to enhance the drawing using ClipDrop API with user-provided key
 def enhance_drawing_text_to_image_api(prompt):
-    try:
-        if not SKETCH_TO_IMAGE_API_KEY:
-            st.error("Please enter your ClipDrop API key.")
-            return None
+    if not SKETCH_TO_IMAGE_API_KEY:
+        st.error("Please enter your ClipDrop API key.")
+        return None
+    
+    url = "https://clipdrop-api.co/text-to-image/v1"
+    headers = {"x-api-key": SKETCH_TO_IMAGE_API_KEY}
+    files = {"prompt": (None, prompt)}
 
-        url = "https://clipdrop-api.co/text-to-image/v1"
-        headers = {"x-api-key": SKETCH_TO_IMAGE_API_KEY}
-        files = {"prompt": (None, prompt)}
-
-        response = requests.post(url, headers=headers, files=files)
-        if response.status_code == 200:
-            with open("result.jpg", "wb") as f:
-                f.write(response.content)
-            return "result.jpg"
-        else:
-            st.error(f"Failed to generate enhanced image. Status Code: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"Error during image enhancement: {e}")
+    response = requests.post(url, headers=headers, files=files)
+    if response.status_code == 200:
+        with open("result.jpg", "wb") as f:
+            f.write(response.content)
+        return "result.jpg"
+    else:
+        st.error("Failed to generate enhanced image.")
         return None
 
 # Streamlit layout for drawing tool
@@ -80,17 +69,21 @@ bg_color = st.sidebar.color_picker("Background color hex: ", "#ffffff")
 realtime_update = st.sidebar.checkbox("Update in realtime", True)
 
 # Create a canvas for drawing
-canvas_result = st_canvas( 
-    fill_color=bg_color,
-    stroke_width=stroke_width,
-    stroke_color=stroke_color,
-    background_color=bg_color,
-    height=400,
-    width=400,
-    update_streamlit=realtime_update,
-    drawing_mode=drawing_mode,
-    key="canvas"
-)
+try:
+    canvas_result = st_canvas(
+        fill_color=bg_color,
+        stroke_width=stroke_width,
+        stroke_color=stroke_color,
+        background_color=bg_color,
+        height=400,
+        width=400,
+        update_streamlit=realtime_update,
+        drawing_mode=drawing_mode,
+        key=f"canvas_{st.session_state.get('session_id', 'default')}"
+    )
+except Exception as e:
+    st.error(f"Error initializing canvas: {e}")
+
 
 # Display the sketch and process the enhancement
 if canvas_result.image_data is not None:
