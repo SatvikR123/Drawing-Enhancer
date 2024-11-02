@@ -66,15 +66,17 @@ drawing_mode = st.sidebar.selectbox("Drawing tool:", ("point", "freedraw", "line
 stroke_width = st.sidebar.slider("Stroke width: ", 1, 25, 3)
 stroke_color = st.sidebar.color_picker("Stroke color hex: ")
 bg_color = st.sidebar.color_picker("Background color hex: ", "#ffffff")
+realtime_update = st.sidebar.checkbox("Update in realtime", True)
 
 # Create a canvas for drawing
-canvas_result = st_canvas(
+canvas_result = st_canvas( 
     fill_color=bg_color,
     stroke_width=stroke_width,
     stroke_color=stroke_color,
     background_color=bg_color,
     height=400,
     width=400,
+    update_streamlit=realtime_update,
     drawing_mode=drawing_mode,
     key="canvas"
 )
