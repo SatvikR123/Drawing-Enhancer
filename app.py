@@ -87,7 +87,7 @@ except Exception as e:
 
 # Display the sketch and process the enhancement
 if canvas_result.image_data is not None:
-    st.image(canvas_result.image_data, caption='Your Drawing', use_column_width=True)
+    st.image(canvas_result.image_data, caption='Your Drawing', use_container_width=True)
 
 if st.button("Enhance Drawing"):
     if not GENAI_API_KEY or not SKETCH_TO_IMAGE_API_KEY:
@@ -101,8 +101,9 @@ if st.button("Enhance Drawing"):
         if prompt:
             enhanced_image_path = enhance_drawing_text_to_image_api(prompt)
             if enhanced_image_path:
-                st.image(enhanced_image_path, caption='Enhanced Drawing', use_column_width=True)
+                st.image(enhanced_image_path, caption='Enhanced Drawing', use_container_width=True)
             else:
                 st.error("Failed to generate enhanced image.")
         else:
             st.error("Failed to generate prompt from sketch.")
+
