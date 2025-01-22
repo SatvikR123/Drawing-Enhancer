@@ -7,7 +7,6 @@ from streamlit_drawable_canvas import st_canvas
 import google.generativeai as genai
 import os
 
-
 # Streamlit app layout
 st.set_page_config(page_title="Drawing Enhancer", page_icon="🎨", layout="wide")
 st.title("🎨 Drawing Enhancer")
@@ -31,15 +30,22 @@ else:
 # Function to generate a prompt from the sketch using Gemini API
 def generate_prompt_from_sketch(file_path):
     if not GENAI_API_KEY:
+        st.warning("Please enter your Gemini API key.")
         return None  # Exit if no API key
-    uploaded_file = genai.upload_file(file_path)
-    if uploaded_file:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content([uploaded_file, "\n\n", "Describe the scene in this sketch."])
-        if response:
-            prompt = response.text
-            return prompt
-    return None
+    try:
+        uploaded_file = genai.upload_file(file_path)
+        if uploaded_file:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content([uploaded_file, "\n\n", "Describe the scene in this sketch."])
+            if response:
+                prompt = response.text
+                return prompt
+            else:
+                st.error("No response from Gemini API.")
+                return None
+    except Exception as e:
+        st.error(f"Error in generating prompt from sketch: {e}")
+        return None
 
 # Function to enhance the drawing using ClipDrop API with user-provided key
 def enhance_drawing_text_to_image_api(prompt):
@@ -50,14 +56,19 @@ def enhance_drawing_text_to_image_api(prompt):
     url = "https://clipdrop-api.co/text-to-image/v1"
     headers = {"x-api-key": SKETCH_TO_IMAGE_API_KEY}
     files = {"prompt": (None, prompt)}
-
-    response = requests.post(url, headers=headers, files=files)
-    if response.status_code == 200:
-        with open("result.jpg", "wb") as f:
-            f.write(response.content)
-        return "result.jpg"
-    else:
-        st.error("Failed to generate enhanced image.")
+    
+    try:
+        response = requests.post(url, headers=headers, files=files)
+        if response.status_code == 200:
+            with open("result.jpg", "wb") as f:
+                f.write(response.content)
+            return "result.jpg"
+        else:
+            st.error(f"ClipDrop API request failed with status code {response.status_code}.")
+            st.error(f"Response: {response.text}")
+            return None
+    except Exception as e:
+        st.error(f"Error in enhancing drawing: {e}")
         return None
 
 # Streamlit layout for drawing tool
@@ -84,7 +95,6 @@ try:
 except Exception as e:
     st.error(f"Error initializing canvas: {e}")
 
-
 # Display the sketch and process the enhancement
 if canvas_result.image_data is not None:
     st.image(canvas_result.image_data, caption='Your Drawing', use_container_width=True)
@@ -95,9 +105,15 @@ if st.button("Enhance Drawing"):
     elif canvas_result.image_data is not None:
         sketch_image = Image.fromarray(canvas_result.image_data.astype(np.uint8))
         file_path = "sketch.png"
-        sketch_image.save(file_path, format='PNG')
-
+        try:
+            sketch_image.save(file_path, format='PNG')
+        except Exception as e:
+            st.error(f"Error saving sketch image: {e}")
+        
+        # Generate prompt from sketch
         prompt = generate_prompt_from_sketch(file_path)
+        
+        # If the prompt is valid, enhance the drawing
         if prompt:
             enhanced_image_path = enhance_drawing_text_to_image_api(prompt)
             if enhanced_image_path:
@@ -106,4 +122,3 @@ if st.button("Enhance Drawing"):
                 st.error("Failed to generate enhanced image.")
         else:
             st.error("Failed to generate prompt from sketch.")
-
